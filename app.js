@@ -1,5 +1,23 @@
 /* FinFlow — App Logic with Supabase Auth & Database, INR Default */
 
+// Debug logger - visible on page
+const _dbg = [];
+function dbg(msg) {
+  _dbg.push(new Date().toLocaleTimeString() + ': ' + msg);
+  console.log('[DBG]', msg);
+  let el = document.getElementById('debug-panel');
+  if (!el) {
+    el = document.createElement('pre');
+    el.id = 'debug-panel';
+    el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:200px;overflow:auto;background:rgba(0,0,0,0.95);color:#0f0;font:11px monospace;padding:8px;z-index:9999;border-top:2px solid #0f0;';
+    document.body.appendChild(el);
+  }
+  el.textContent = _dbg.join('\n');
+  el.scrollTop = el.scrollHeight;
+}
+window.onerror = (msg, src, line, col, err) => dbg('GLOBAL ERROR: ' + msg + ' at ' + src + ':' + line);
+window.onunhandledrejection = (e) => dbg('UNHANDLED PROMISE: ' + e.reason);
+
 // ============================================
 // CONSTANTS
 // ============================================
@@ -30,6 +48,7 @@ function showAuthCard(type) {
 
 async function handleLogin(e) {
   e.preventDefault();
+  dbg('handleLogin called');
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-error');
@@ -38,12 +57,13 @@ async function handleLogin(e) {
   btn.disabled = true;
   errEl.textContent = 'Signing in...';
   try {
+    dbg('Calling supabase.auth.signInWithPassword...');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { errEl.textContent = error.message; btn.disabled = false; return; }
+    if (error) { dbg('Login error: ' + error.message); errEl.textContent = error.message; btn.disabled = false; return; }
+    dbg('Login success, waiting for onAuthStateChange...');
     errEl.textContent = '';
-    // onAuthStateChange will handle startApp()
   } catch (err) {
-    console.error('Login error:', err);
+    dbg('Login EXCEPTION: ' + err.message);
     errEl.textContent = 'Something went wrong. Please try again.';
     btn.disabled = false;
   }
@@ -51,6 +71,7 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
   e.preventDefault();
+  dbg('handleRegister called');
   const fullname = document.getElementById('register-fullname').value.trim();
   const email = document.getElementById('register-email').value.trim();
   const password = document.getElementById('register-password').value;
@@ -63,22 +84,25 @@ async function handleRegister(e) {
   btn.disabled = true;
   errEl.textContent = 'Creating account...';
   try {
+    dbg('Calling supabase.auth.signUp...');
     const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { data: { full_name: fullname } }
     });
+    dbg('signUp returned. error=' + (error ? error.message : 'none') + ' session=' + (data?.session ? 'YES' : 'NO'));
     if (error) { errEl.textContent = error.message; btn.disabled = false; return; }
     if (data.user && !data.session) {
+      dbg('No session - email confirmation required!');
       errEl.textContent = '';
       btn.disabled = false;
       showToast('Account created! Check your email to confirm, then log in.', 'info');
       showAuthCard('login');
       return;
     }
+    dbg('Signup OK with session. Waiting for onAuthStateChange...');
     errEl.textContent = '';
-    // onAuthStateChange will handle startApp()
   } catch (err) {
-    console.error('Register error:', err);
+    dbg('Register EXCEPTION: ' + err.message);
     errEl.textContent = 'Something went wrong. Please try again.';
     btn.disabled = false;
   }
@@ -550,11 +574,17 @@ function refreshAll() {
 // START APP (after login)
 // ============================================
 async function startApp() {
+  dbg('startApp() called');
   showApp();
+  dbg('showApp done. Loading state...');
   await loadState();
+  dbg('loadState done. Applying settings...');
   applySettings();
+  dbg('applySettings done. Setting date...');
   document.getElementById('txn-date').value = new Date().toISOString().split('T')[0];
+  dbg('Calling refreshAll...');
   refreshAll();
+  dbg('startApp COMPLETE ✅');
 }
 
 // ============================================
@@ -588,19 +618,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   let appStarted = false;
 
   async function handleAuthChange(event, session) {
-    console.log('Auth event:', event);
+    dbg('handleAuthChange: event=' + event + ' user=' + (session?.user?.email || 'none'));
     if (session && session.user) {
       currentUser = session.user;
       if (!appStarted) {
         appStarted = true;
+        dbg('First auth, calling startApp...');
         try {
           await startApp();
+          dbg('startApp completed successfully');
         } catch (err) {
-          console.error('startApp error:', err);
+          dbg('startApp CRASHED: ' + err.message + '\n' + err.stack);
           showToast('Error loading app data.', 'error');
         }
+      } else {
+        dbg('App already started, skipping');
       }
     } else {
+      dbg('No session, showing auth screen');
       currentUser = null;
       appStarted = false;
       showAuthScreen();
