@@ -34,17 +34,18 @@ async function handleLogin(e) {
   const password = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-error');
   if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true;
   errEl.textContent = 'Signing in...';
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { errEl.textContent = error.message; return; }
-    document.getElementById('login-form').reset();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { errEl.textContent = error.message; btn.disabled = false; return; }
     errEl.textContent = '';
-    currentUser = data.user;
-    await startApp();
+    // onAuthStateChange will handle startApp()
   } catch (err) {
     console.error('Login error:', err);
     errEl.textContent = 'Something went wrong. Please try again.';
+    btn.disabled = false;
   }
 }
 
@@ -58,27 +59,28 @@ async function handleRegister(e) {
   if (!fullname || !email || !password || !confirm) { errEl.textContent = 'Please fill in all fields.'; return; }
   if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
   if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
+  const btn = document.getElementById('btn-register');
+  btn.disabled = true;
   errEl.textContent = 'Creating account...';
   try {
     const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { data: { full_name: fullname } }
     });
-    if (error) { errEl.textContent = error.message; return; }
+    if (error) { errEl.textContent = error.message; btn.disabled = false; return; }
     if (data.user && !data.session) {
       errEl.textContent = '';
-      showToast('Account created! Please check your email to confirm, then log in.', 'info');
+      btn.disabled = false;
+      showToast('Account created! Check your email to confirm, then log in.', 'info');
       showAuthCard('login');
       return;
     }
-    document.getElementById('register-form').reset();
     errEl.textContent = '';
-    currentUser = data.user;
-    showToast('Account created! Welcome to FinFlow! 🎉');
-    await startApp();
+    // onAuthStateChange will handle startApp()
   } catch (err) {
     console.error('Register error:', err);
     errEl.textContent = 'Something went wrong. Please try again.';
+    btn.disabled = false;
   }
 }
 
@@ -578,28 +580,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Resize
   let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{drawSpendingChart();drawCategoryChart();drawMonthlyTrendChart();drawIncomeExpenseChart();},200);});
 
-  // Supabase auth state listener
+  // Supabase auth — single source of truth
   let appStarted = false;
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log('Auth event:', event, session?.user?.email);
-    if (session?.user) {
+
+  async function handleAuthChange(event, session) {
+    console.log('Auth event:', event);
+    if (session && session.user) {
       currentUser = session.user;
-      if (event === 'SIGNED_IN' && !appStarted) {
+      if (!appStarted) {
         appStarted = true;
-        await startApp();
+        try {
+          await startApp();
+        } catch (err) {
+          console.error('startApp error:', err);
+          showToast('Error loading app data.', 'error');
+        }
       }
     } else {
       currentUser = null;
       appStarted = false;
       showAuthScreen();
+      showAuthCard('login');
     }
-  });
+  }
 
-  // Check existing session
+  supabase.auth.onAuthStateChange(handleAuthChange);
+
+  // Check existing session on load
   const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    currentUser = session.user;
-    await startApp();
+  if (session && session.user) {
+    await handleAuthChange('INITIAL_SESSION', session);
   } else {
     showAuthScreen();
     showAuthCard('login');
