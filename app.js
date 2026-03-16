@@ -1,5 +1,10 @@
 /* FinFlow — Direct Open App with Supabase (No Auth) */
 
+// Initialize Supabase client (use 'db' to avoid conflict with window.supabase CDN)
+const SUPABASE_URL = 'https://rwjgwflqmocmzhtqfvlr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3amd3ZmxxbW9jbXpodHFmdmxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzU2ODgsImV4cCI6MjA4OTIxMTY4OH0.oIRmfUGv9Tecfo4raOK8xKxql5Lf0hhZczDmcuAKT9I';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 // ============================================
 // CONSTANTS
 // ============================================
@@ -22,18 +27,18 @@ let state = {
 async function loadState() {
   try {
     // Load transactions
-    const { data: txns, error: txnErr } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+    const { data: txns, error: txnErr } = await db.from('transactions').select('*').order('date', { ascending: false });
     if (txnErr) { console.error('Txn load error:', txnErr); showToast('DB Error: ' + txnErr.message, 'error'); }
     state.transactions = (txns || []).map(t => ({
       id: t.id, type: t.type, amount: parseFloat(t.amount), description: t.description,
       category: t.category, date: t.date, notes: t.notes || '', createdAt: new Date(t.created_at).getTime()
     }));
     // Load budgets
-    const { data: bdgs, error: bdgErr } = await supabase.from('budgets').select('*');
+    const { data: bdgs, error: bdgErr } = await db.from('budgets').select('*');
     if (bdgErr) { console.error('Budget load error:', bdgErr); showToast('DB Error: ' + bdgErr.message, 'error'); }
     state.budgets = (bdgs || []).map(b => ({ id: b.id, category: b.category, limit: parseFloat(b.budget_limit) }));
     // Load settings
-    const { data: sett, error: settErr } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
+    const { data: sett, error: settErr } = await db.from('app_settings').select('*').eq('id', 1).maybeSingle();
     if (settErr) { console.error('Settings load error:', settErr); showToast('DB Error: ' + settErr.message, 'error'); }
     if (sett) {
       state.settings = {
@@ -49,7 +54,7 @@ async function loadState() {
 }
 
 async function saveSettingsDB() {
-  await supabase.from('app_settings').upsert({
+  await db.from('app_settings').upsert({
     id: 1, name: state.settings.name, currency: state.settings.currency,
     dark_mode: state.settings.darkMode, web3forms_key: state.settings.web3formsKey,
     alert_email: state.settings.alertEmail, budget_alerts: state.settings.budgetAlerts
@@ -98,7 +103,7 @@ async function handleAddTransaction(e) {
   const notes = (document.getElementById('txn-notes').value || '').trim();
   if(!amount||!description||!category||!date){showToast('Please fill in all required fields.','error');return;}
 
-  const { data, error } = await supabase.from('transactions').insert({ type, amount, description, category, date, notes }).select().single();
+  const { data, error } = await db.from('transactions').insert({ type, amount, description, category, date, notes }).select().single();
   if (error) { showToast('Failed to add: ' + error.message, 'error'); return; }
 
   const newTxn = { id: data.id, type, amount, description, category, date, notes, createdAt: Date.now() };
@@ -112,7 +117,7 @@ async function handleAddTransaction(e) {
 }
 
 async function deleteTransaction(id) {
-  await supabase.from('transactions').delete().eq('id', id);
+  await db.from('transactions').delete().eq('id', id);
   state.transactions = state.transactions.filter(t => t.id !== id);
   showToast('Transaction deleted.', 'info');
   refreshAll();
@@ -129,11 +134,11 @@ async function handleAddBudget(e) {
 
   const existing = state.budgets.find(b => b.category === category);
   if (existing) {
-    await supabase.from('budgets').update({ budget_limit: limit }).eq('id', existing.id);
+    await db.from('budgets').update({ budget_limit: limit }).eq('id', existing.id);
     existing.limit = limit;
     showToast(`Budget for ${category} updated!`);
   } else {
-    const { data, error } = await supabase.from('budgets').insert({ category, budget_limit: limit }).select().single();
+    const { data, error } = await db.from('budgets').insert({ category, budget_limit: limit }).select().single();
     if (error) { showToast('Failed: ' + error.message, 'error'); return; }
     state.budgets.push({ id: data.id, category, limit });
     showToast(`Budget for ${category} created!`);
@@ -144,7 +149,7 @@ async function handleAddBudget(e) {
 }
 
 async function deleteBudget(id) {
-  await supabase.from('budgets').delete().eq('id', id);
+  await db.from('budgets').delete().eq('id', id);
   state.budgets = state.budgets.filter(b => b.id !== id);
   showToast('Budget removed.', 'info');
   refreshAll();
@@ -194,8 +199,8 @@ function exportData() {
 
 async function clearAllData() {
   if(!confirm('⚠️ Delete all your data? This cannot be undone.')) return;
-  await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  await supabase.from('budgets').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await db.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await db.from('budgets').delete().neq('id', '00000000-0000-0000-0000-000000000000');
   state.transactions = []; state.budgets = [];
   showToast('All data cleared.', 'info');
   refreshAll();
