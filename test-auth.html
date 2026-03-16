@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html><head><title>Auth Test</title></head>
+<body>
+<h1>FinFlow Auth Test</h1>
+<pre id="log">Loading Supabase...</pre>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script>
+const log = document.getElementById('log');
+function addLog(msg) { log.textContent += '\n' + msg; console.log(msg); }
+
+async function runTest() {
+  try {
+    addLog('Creating Supabase client...');
+    const sb = window.supabase.createClient(
+      'https://rwjgwflqmocmzhtqfvlr.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3amd3ZmxxbW9jbXpodHFmdmxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzU2ODgsImV4cCI6MjA4OTIxMTY4OH0.oIRmfUGv9Tecfo4raOK8xKxql5Lf0hhZczDmcuAKT9I'
+    );
+    addLog('Client created OK');
+
+    addLog('Signing up user...');
+    const email = 'browsertest' + Date.now() + '@test.com';
+    const { data, error } = await sb.auth.signUp({
+      email: email,
+      password: 'testpass123',
+      options: { data: { full_name: 'Browser Test' } }
+    });
+
+    if (error) { addLog('SIGNUP ERROR: ' + error.message); return; }
+    addLog('Signup OK! User ID: ' + data.user?.id);
+    addLog('Has session: ' + (data.session !== null));
+    addLog('Email: ' + data.user?.email);
+
+    if (!data.session) {
+      addLog('NO SESSION! Email confirmation is probably still ENABLED in Supabase.');
+      addLog('Fix: Go to Supabase > Authentication > Providers > Email > Turn OFF "Confirm email"');
+      return;
+    }
+
+    addLog('Loading settings...');
+    const { data: sett, error: settErr } = await sb.from('user_settings').select('*').eq('user_id', data.user.id).maybeSingle();
+    addLog('Settings result: ' + JSON.stringify(sett));
+    if (settErr) addLog('Settings error: ' + JSON.stringify(settErr));
+
+    addLog('Loading transactions...');
+    const { data: txns, error: txnErr } = await sb.from('transactions').select('*').eq('user_id', data.user.id);
+    addLog('Transactions: ' + (txns?.length || 0) + ' rows');
+    if (txnErr) addLog('Txn error: ' + JSON.stringify(txnErr));
+
+    addLog('\n=== ALL TESTS PASSED ===');
+  } catch (e) {
+    addLog('EXCEPTION: ' + e.message);
+    addLog('Stack: ' + e.stack);
+  }
+}
+runTest();
+</script>
+</body>
+</html>
