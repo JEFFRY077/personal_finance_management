@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinFlow — Personal Finance Management & Expense Tracker</title>
+  <meta name="description" content="FinFlow is a premium personal finance management and expense tracker. Manage budgets, track expenses, monitor income, and achieve your financial goals." />
+  <meta name="keywords" content="finance, expense tracker, budget, money management, personal finance" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+
+  <!-- ===== AUTH SCREEN (Login / Register) ===== -->
+  <div class="auth-screen" id="auth-screen">
+    <div class="auth-bg-glow"></div>
+    <div class="auth-container">
+      <div class="auth-brand">
+        <div class="auth-brand-icon">
+          <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="21" stroke="url(#g1auth)" stroke-width="3"/><path d="M24 12v24M15 21h18M15 27h18" stroke="url(#g1auth)" stroke-width="2.5" stroke-linecap="round"/><defs><linearGradient id="g1auth" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs></svg>
+        </div>
+        <h1 class="auth-brand-name">FinFlow</h1>
+        <p class="auth-brand-tagline">Personal Finance & Expense Tracker</p>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div class="auth-card" id="auth-login-card">
+        <h2 class="auth-title">Welcome Back</h2>
+        <p class="auth-subtitle">Sign in to continue managing your finances</p>
+        <form class="auth-form" id="login-form" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <div class="input-icon-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" id="login-email" placeholder="Enter your email" required autocomplete="email" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <div class="input-icon-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password" />
+            </div>
+          </div>
+          <div class="auth-error" id="login-error"></div>
+          <button type="submit" class="btn btn-primary btn-full" id="btn-login">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Sign In
+          </button>
+        </form>
+        <p class="auth-switch">Don't have an account? <a href="#" onclick="showAuthCard('register'); return false;" id="link-to-register">Create Account</a></p>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div class="auth-card hidden" id="auth-register-card">
+        <h2 class="auth-title">Create Account</h2>
+        <p class="auth-subtitle">Join FinFlow and take control of your finances</p>
+        <form class="auth-form" id="register-form" onsubmit="handleRegister(event)">
+          <div class="form-group">
+            <label for="register-fullname">Full Name</label>
+            <div class="input-icon-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input type="text" id="register-fullname" placeholder="Enter your full name" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="register-email">Email</label>
+            <div class="input-icon-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" id="register-email" placeholder="Enter your email" required autocomplete="email" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="register-password">Password</label>
+            <div class="input-icon-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" id="register-password" placeholder="Create a password (min 6 chars)" required minlength="6" autocomplete="new-password" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="register-confirm-password">Confirm Password</label>
+            <div class="input-icon-wrapper">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <input type="password" id="register-confirm-password" placeholder="Re-enter your password" required minlength="6" autocomplete="new-password" />
+            </div>
+          </div>
+          <div class="auth-error" id="register-error"></div>
+          <button type="submit" class="btn btn-primary btn-full" id="btn-register">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            Create Account
+          </button>
+        </form>
+        <p class="auth-switch">Already have an account? <a href="#" onclick="showAuthCard('login'); return false;" id="link-to-login">Sign In</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== APP WRAPPER (hidden until login) ===== -->
+  <div class="app-wrapper hidden" id="app-wrapper">
+
+    <!-- ===== SIDEBAR NAVIGATION ===== -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="url(#g1)" stroke-width="2.5"/><path d="M16 8v16M10 14h12M10 18h12" stroke="url(#g1)" stroke-width="2" stroke-linecap="round"/><defs><linearGradient id="g1" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs></svg>
+        </div>
+        <span class="brand-name">FinFlow</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-section="dashboard" id="nav-dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-section="transactions" id="nav-transactions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Transactions</span>
+        </button>
+        <button class="nav-item" data-section="budgets" id="nav-budgets">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v9h-9"/></svg>
+          <span>Budgets</span>
+        </button>
+        <button class="nav-item" data-section="analytics" id="nav-analytics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Analytics</span>
+        </button>
+        <button class="nav-item" data-section="settings" id="nav-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile" id="user-profile" onclick="openModal('switch-user-modal')">
+          <div class="user-avatar" id="sidebar-avatar">U</div>
+          <div class="user-info">
+            <span class="user-name" id="sidebar-user-name">User</span>
+            <span class="user-role">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;display:inline;vertical-align:-1px;margin-right:3px;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              Switch User
+            </span>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-logout" id="btn-logout" onclick="handleLogout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Logout
+        </button>
+      </div>
+    </aside>
+
+    <!-- ===== MOBILE HEADER ===== -->
+    <header class="mobile-header" id="mobile-header">
+      <button class="menu-toggle" id="menu-toggle" aria-label="Toggle Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="mobile-brand">FinFlow</div>
+      <button class="btn btn-ghost mobile-logout" onclick="handleLogout()" aria-label="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content" id="main-content">
+
+      <!-- ===== DASHBOARD SECTION ===== -->
+      <section class="content-section active" id="section-dashboard">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title">Dashboard</h1>
+            <p class="section-subtitle" id="dashboard-greeting">Welcome back! Here's your financial overview.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-primary" id="btn-add-transaction" onclick="openModal('add-transaction-modal')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Transaction
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+          <div class="card summary-card card-balance" id="card-balance">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+            </div>
+            <div class="card-content">
+              <span class="card-label">Total Balance</span>
+              <span class="card-value" id="total-balance">₹0.00</span>
+              <span class="card-trend positive">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 4l4 4H4z"/></svg>
+                +12.5% from last month
+              </span>
+            </div>
+          </div>
+          <div class="card summary-card card-income" id="card-income">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+            <div class="card-content">
+              <span class="card-label">Total Income</span>
+              <span class="card-value" id="total-income">₹0.00</span>
+              <span class="card-trend positive">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 4l4 4H4z"/></svg>
+                +8.2% from last month
+              </span>
+            </div>
+          </div>
+          <div class="card summary-card card-expense" id="card-expense">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+            </div>
+            <div class="card-content">
+              <span class="card-label">Total Expenses</span>
+              <span class="card-value" id="total-expenses">₹0.00</span>
+              <span class="card-trend negative">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 12l4-4H4z"/></svg>
+                -3.1% from last month
+              </span>
+            </div>
+          </div>
+          <div class="card summary-card card-savings" id="card-savings">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            </div>
+            <div class="card-content">
+              <span class="card-label">Savings</span>
+              <span class="card-value" id="total-savings">₹0.00</span>
+              <span class="card-trend positive">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 4l4 4H4z"/></svg>
+                +22.0% from last month
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row">
+          <div class="card chart-card" id="spending-chart-card">
+            <div class="card-header">
+              <h2 class="card-title">Spending Overview</h2>
+              <div class="chart-period-selector">
+                <button class="period-btn active" data-period="week">Week</button>
+                <button class="period-btn" data-period="month">Month</button>
+                <button class="period-btn" data-period="year">Year</button>
+              </div>
+            </div>
+            <canvas id="spending-chart" width="600" height="300"></canvas>
+          </div>
+          <div class="card chart-card chart-card-small" id="category-chart-card">
+            <div class="card-header">
+              <h2 class="card-title">By Category</h2>
+            </div>
+            <canvas id="category-chart" width="300" height="300"></canvas>
+            <div class="category-legend" id="category-legend"></div>
+          </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card" id="recent-transactions-card">
+          <div class="card-header">
+            <h2 class="card-title">Recent Transactions</h2>
+            <button class="btn btn-ghost" onclick="switchSection('transactions')">View All</button>
+          </div>
+          <div class="transactions-list" id="recent-transactions-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== TRANSACTIONS SECTION ===== -->
+      <section class="content-section" id="section-transactions">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title">Transactions</h1>
+            <p class="section-subtitle">View and manage all your transactions</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-primary" id="btn-add-transaction-2" onclick="openModal('add-transaction-modal')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Transaction
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar card" id="filters-bar">
+          <div class="filter-group">
+            <label>Type</label>
+            <select id="filter-type">
+              <option value="all">All</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Category</label>
+            <select id="filter-category">
+              <option value="all">All Categories</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Sort By</label>
+            <select id="filter-sort">
+              <option value="date-desc">Newest First</option>
+              <option value="date-asc">Oldest First</option>
+              <option value="amount-desc">Highest Amount</option>
+              <option value="amount-asc">Lowest Amount</option>
+            </select>
+          </div>
+          <div class="filter-group search-group">
+            <label>Search</label>
+            <input type="text" id="filter-search" placeholder="Search transactions..." />
+          </div>
+        </div>
+
+        <!-- Full Transaction List -->
+        <div class="card" id="all-transactions-card">
+          <div class="transactions-list" id="all-transactions-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== BUDGETS SECTION ===== -->
+      <section class="content-section" id="section-budgets">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title">Budgets</h1>
+            <p class="section-subtitle">Set spending limits and track your progress</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-primary" id="btn-add-budget" onclick="openModal('add-budget-modal')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Budget
+            </button>
+          </div>
+        </div>
+
+        <div class="budgets-grid" id="budgets-grid">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- ===== ANALYTICS SECTION ===== -->
+      <section class="content-section" id="section-analytics">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title">Analytics</h1>
+            <p class="section-subtitle">Deep dive into your financial data</p>
+          </div>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="card chart-card" id="monthly-trend-card">
+            <div class="card-header">
+              <h2 class="card-title">Monthly Trend</h2>
+            </div>
+            <canvas id="monthly-trend-chart" width="700" height="320"></canvas>
+          </div>
+          <div class="card chart-card" id="income-vs-expense-card">
+            <div class="card-header">
+              <h2 class="card-title">Income vs Expenses</h2>
+            </div>
+            <canvas id="income-expense-chart" width="700" height="320"></canvas>
+          </div>
+          <div class="card" id="top-expenses-card">
+            <div class="card-header">
+              <h2 class="card-title">Top Expense Categories</h2>
+            </div>
+            <div class="top-categories-list" id="top-categories-list"></div>
+          </div>
+          <div class="card" id="savings-rate-card">
+            <div class="card-header">
+              <h2 class="card-title">Savings Rate</h2>
+            </div>
+            <div class="savings-rate-display" id="savings-rate-display">
+              <div class="savings-ring">
+                <svg viewBox="0 0 120 120" id="savings-ring-svg">
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+                  <circle cx="60" cy="60" r="52" fill="none" stroke="url(#savingsGrad)" stroke-width="10"
+                    stroke-dasharray="327" stroke-dashoffset="327" stroke-linecap="round"
+                    transform="rotate(-90 60 60)" id="savings-ring-progress"/>
+                  <defs>
+                    <linearGradient id="savingsGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stop-color="#6366f1"/>
+                      <stop offset="100%" stop-color="#a855f7"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <span class="savings-ring-value" id="savings-ring-value">0%</span>
+              </div>
+              <p class="savings-rate-label">of income saved this month</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SETTINGS SECTION ===== -->
+      <section class="content-section" id="section-settings">
+        <div class="section-header">
+          <div>
+            <h1 class="section-title">Settings</h1>
+            <p class="section-subtitle">Customize your FinFlow experience</p>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <div class="card settings-card" id="settings-profile">
+            <h3>Profile</h3>
+            <div class="settings-form">
+              <div class="form-group">
+                <label for="settings-name">Full Name</label>
+                <input type="text" id="settings-name" value="" />
+              </div>
+              <div class="form-group">
+                <label for="settings-email">Email</label>
+                <input type="email" id="settings-email" value="" />
+              </div>
+              <div class="form-group">
+                <label for="settings-currency">Currency</label>
+                <select id="settings-currency">
+                  <option value="INR" selected>INR (₹)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                  <option value="JPY">JPY (¥)</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" id="btn-save-profile" onclick="saveSettings()">Save Changes</button>
+            </div>
+          </div>
+          <div class="card settings-card" id="settings-preferences">
+            <h3>Preferences</h3>
+            <div class="settings-form">
+              <div class="toggle-row">
+                <span>Dark Mode</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-dark-mode" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="toggle-row">
+                <span>Notifications</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-notifications" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="toggle-row">
+                <span>Weekly Report</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-weekly-report" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="card settings-card" id="settings-account">
+            <h3>Account Security</h3>
+            <div class="settings-form">
+              <div class="form-group">
+                <label for="settings-change-password">New Password</label>
+                <input type="password" id="settings-change-password" placeholder="Enter new password" minlength="4" />
+              </div>
+              <div class="form-group">
+                <label for="settings-confirm-password">Confirm New Password</label>
+                <input type="password" id="settings-confirm-password" placeholder="Re-enter new password" minlength="4" />
+              </div>
+              <button class="btn btn-primary" id="btn-change-password" onclick="handleChangePassword()">Change Password</button>
+            </div>
+          </div>
+          <div class="card settings-card" id="settings-email-alerts">
+            <h3>📧 Email Alerts (Web3Forms)</h3>
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:16px;">Get email alerts when spending exceeds budget limits. Get your free API key from <a href="https://web3forms.com" target="_blank" rel="noopener" style="color:var(--accent-indigo);font-weight:600;">web3forms.com</a></p>
+            <div class="settings-form">
+              <div class="form-group">
+                <label for="settings-web3forms-key">Web3Forms Access Key</label>
+                <input type="text" id="settings-web3forms-key" placeholder="Paste your Web3Forms access key here" />
+              </div>
+              <div class="form-group">
+                <label for="settings-alert-email">Alert Email Address</label>
+                <input type="email" id="settings-alert-email" placeholder="you@example.com" />
+              </div>
+              <div class="toggle-row">
+                <span>Enable Budget Alerts</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-budget-alerts" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <button class="btn btn-primary" id="btn-save-alerts" onclick="saveAlertSettings()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                Save Alert Settings
+              </button>
+              <button class="btn btn-outline" id="btn-test-alert" onclick="sendTestAlert()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                Send Test Email
+              </button>
+            </div>
+          </div>
+          <div class="card settings-card" id="settings-data">
+            <h3>Data Management</h3>
+            <div class="settings-form">
+              <button class="btn btn-outline" id="btn-export-data" onclick="exportData()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export Data (JSON)
+              </button>
+              <button class="btn btn-danger" id="btn-clear-data" onclick="clearAllData()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Clear All Data
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div><!-- end app-wrapper -->
+
+  <!-- ===== ADD TRANSACTION MODAL ===== -->
+  <div class="modal-overlay" id="add-transaction-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Add Transaction</h2>
+        <button class="modal-close" onclick="closeModal('add-transaction-modal')" aria-label="Close">&times;</button>
+      </div>
+      <form class="modal-form" id="transaction-form" onsubmit="handleAddTransaction(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="txn-type">Type</label>
+            <select id="txn-type" required>
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="txn-amount">Amount (₹)</label>
+            <input type="number" id="txn-amount" placeholder="0.00" step="0.01" min="0.01" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="txn-description">Description</label>
+          <input type="text" id="txn-description" placeholder="e.g. Grocery shopping" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="txn-category">Category</label>
+            <select id="txn-category" required>
+              <option value="">Select…</option>
+              <option value="Food & Dining">🍔 Food & Dining</option>
+              <option value="Transportation">🚗 Transportation</option>
+              <option value="Shopping">🛍️ Shopping</option>
+              <option value="Entertainment">🎬 Entertainment</option>
+              <option value="Bills & Utilities">💡 Bills & Utilities</option>
+              <option value="Health">❤️ Health</option>
+              <option value="Education">📚 Education</option>
+              <option value="Travel">✈️ Travel</option>
+              <option value="Salary">💼 Salary</option>
+              <option value="Freelance">💻 Freelance</option>
+              <option value="Investment">📈 Investment</option>
+              <option value="Other">📦 Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="txn-date">Date</label>
+            <input type="date" id="txn-date" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="txn-notes">Notes (optional)</label>
+          <textarea id="txn-notes" placeholder="Additional notes..." rows="2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-transaction">Add Transaction</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== ADD BUDGET MODAL ===== -->
+  <div class="modal-overlay" id="add-budget-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Add Budget</h2>
+        <button class="modal-close" onclick="closeModal('add-budget-modal')" aria-label="Close">&times;</button>
+      </div>
+      <form class="modal-form" id="budget-form" onsubmit="handleAddBudget(event)">
+        <div class="form-group">
+          <label for="budget-category">Category</label>
+          <select id="budget-category" required>
+            <option value="">Select…</option>
+            <option value="Food & Dining">🍔 Food & Dining</option>
+            <option value="Transportation">🚗 Transportation</option>
+            <option value="Shopping">🛍️ Shopping</option>
+            <option value="Entertainment">🎬 Entertainment</option>
+            <option value="Bills & Utilities">💡 Bills & Utilities</option>
+            <option value="Health">❤️ Health</option>
+            <option value="Education">📚 Education</option>
+            <option value="Travel">✈️ Travel</option>
+            <option value="Other">📦 Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="budget-limit">Monthly Limit (₹)</label>
+          <input type="number" id="budget-limit" placeholder="5000" step="0.01" min="1" required />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-budget">Set Budget</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== SWITCH USER MODAL ===== -->
+  <div class="modal-overlay" id="switch-user-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Switch User</h2>
+        <button class="modal-close" onclick="closeModal('switch-user-modal')" aria-label="Close">&times;</button>
+      </div>
+      <div class="switch-user-content">
+        <p class="switch-user-description">Select a user account to switch to, or create a new one.</p>
+        <div class="user-accounts-list" id="user-accounts-list">
+          <!-- Populated by JS -->
+        </div>
+        <div class="switch-user-actions">
+          <button class="btn btn-primary btn-full" onclick="closeModal('switch-user-modal'); showAuthCard('register'); handleLogout(true);" id="btn-create-new-user">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            Create New User
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOAST CONTAINER ===== -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
