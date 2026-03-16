@@ -22,23 +22,30 @@ let state = {
 async function loadState() {
   try {
     // Load transactions
-    const { data: txns } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+    const { data: txns, error: txnErr } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+    if (txnErr) { console.error('Txn load error:', txnErr); showToast('DB Error: ' + txnErr.message, 'error'); }
     state.transactions = (txns || []).map(t => ({
       id: t.id, type: t.type, amount: parseFloat(t.amount), description: t.description,
       category: t.category, date: t.date, notes: t.notes || '', createdAt: new Date(t.created_at).getTime()
     }));
     // Load budgets
-    const { data: bdgs } = await supabase.from('budgets').select('*');
+    const { data: bdgs, error: bdgErr } = await supabase.from('budgets').select('*');
+    if (bdgErr) { console.error('Budget load error:', bdgErr); showToast('DB Error: ' + bdgErr.message, 'error'); }
     state.budgets = (bdgs || []).map(b => ({ id: b.id, category: b.category, limit: parseFloat(b.budget_limit) }));
     // Load settings
-    const { data: sett } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
+    const { data: sett, error: settErr } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
+    if (settErr) { console.error('Settings load error:', settErr); showToast('DB Error: ' + settErr.message, 'error'); }
     if (sett) {
       state.settings = {
         name: sett.name || 'User', currency: sett.currency || 'INR', darkMode: sett.dark_mode ?? true,
         web3formsKey: sett.web3forms_key || '', alertEmail: sett.alert_email || '', budgetAlerts: sett.budget_alerts ?? false
       };
     }
-  } catch (err) { console.warn('loadState error:', err); }
+    console.log('loadState done:', state.transactions.length, 'txns,', state.budgets.length, 'budgets');
+  } catch (err) {
+    console.error('loadState EXCEPTION:', err);
+    showToast('Failed to load data: ' + err.message, 'error');
+  }
 }
 
 async function saveSettingsDB() {
