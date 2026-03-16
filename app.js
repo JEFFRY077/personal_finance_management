@@ -1,9 +1,20 @@
-/* FinFlow — Direct Open App with Supabase (No Auth) */
+/* FinFlow - Direct Open App with Supabase (No Auth) */
 
 // Initialize Supabase client (use 'db' to avoid conflict with window.supabase CDN)
 const SUPABASE_URL = 'https://rwjgwflqmocmzhtqfvlr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3amd3ZmxxbW9jbXpodHFmdmxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzU2ODgsImV4cCI6MjA4OTIxMTY4OH0.oIRmfUGv9Tecfo4raOK8xKxql5Lf0hhZczDmcuAKT9I';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Self-test: verify db works
+(async () => {
+  try {
+    const { data, error } = await db.from('transactions').select('id', { count: 'exact', head: true });
+    if (error) document.title = 'DB-ERR: ' + error.message;
+    else document.title = 'DB-OK: connected';
+  } catch (e) {
+    document.title = 'DB-EXCEPTION: ' + e.message;
+  }
+})();
 
 // ============================================
 // CONSTANTS
