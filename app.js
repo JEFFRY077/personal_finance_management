@@ -1,22 +1,4 @@
-/* FinFlow — App Logic with Supabase Auth & Database, INR Default */
-
-// Debug logger - visible on page
-const _dbg = [];
-function dbg(msg) {
-  _dbg.push(new Date().toLocaleTimeString() + ': ' + msg);
-  console.log('[DBG]', msg);
-  let el = document.getElementById('debug-panel');
-  if (!el) {
-    el = document.createElement('pre');
-    el.id = 'debug-panel';
-    el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:200px;overflow:auto;background:rgba(0,0,0,0.95);color:#0f0;font:11px monospace;padding:8px;z-index:9999;border-top:2px solid #0f0;';
-    document.body.appendChild(el);
-  }
-  el.textContent = _dbg.join('\n');
-  el.scrollTop = el.scrollHeight;
-}
-window.onerror = (msg, src, line, col, err) => dbg('GLOBAL ERROR: ' + msg + ' at ' + src + ':' + line);
-window.onunhandledrejection = (e) => dbg('UNHANDLED PROMISE: ' + e.reason);
+/* FinFlow — Direct Open App with Supabase (No Auth) */
 
 // ============================================
 // CONSTANTS
@@ -25,153 +7,46 @@ const CATEGORY_EMOJIS = { 'Food & Dining':'🍔','Transportation':'🚗','Shoppi
 const CATEGORY_COLORS = { 'Food & Dining':'#f97316','Transportation':'#3b82f6','Shopping':'#a855f7','Entertainment':'#ec4899','Bills & Utilities':'#f59e0b','Health':'#ef4444','Education':'#6366f1','Travel':'#06b6d4','Salary':'#10b981','Freelance':'#8b5cf6','Investment':'#14b8a6','Other':'#64748b' };
 const CURRENCY_SYMBOLS = { USD:'$', EUR:'€', GBP:'£', INR:'₹', JPY:'¥' };
 
-let currentUser = null; // Supabase user object
-let state = { transactions: [], budgets: [], settings: { currency:'INR', dark_mode:true, notifications:true, weekly_report:false, web3forms_key:'', alert_email:'', budget_alerts:false } };
+// ============================================
+// STATE
+// ============================================
+let state = {
+  transactions: [],
+  budgets: [],
+  settings: { name:'User', currency:'INR', darkMode:true, web3formsKey:'', alertEmail:'', budgetAlerts:false }
+};
 
 // ============================================
-// AUTH (Supabase)
-// ============================================
-function showAuthScreen() {
-  document.getElementById('auth-screen').classList.remove('hidden');
-  document.getElementById('app-wrapper').classList.add('hidden');
-}
-function showApp() {
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('app-wrapper').classList.remove('hidden');
-}
-function showAuthCard(type) {
-  document.getElementById('auth-login-card').classList.toggle('hidden', type !== 'login');
-  document.getElementById('auth-register-card').classList.toggle('hidden', type !== 'register');
-  document.getElementById('login-error').textContent = '';
-  document.getElementById('register-error').textContent = '';
-}
-
-async function handleLogin(e) {
-  e.preventDefault();
-  dbg('handleLogin called');
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const errEl = document.getElementById('login-error');
-  if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
-  const btn = document.getElementById('btn-login');
-  btn.disabled = true;
-  errEl.textContent = 'Signing in...';
-  try {
-    dbg('Calling supabase.auth.signInWithPassword...');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { dbg('Login error: ' + error.message); errEl.textContent = error.message; btn.disabled = false; return; }
-    dbg('Login success, waiting for onAuthStateChange...');
-    errEl.textContent = '';
-  } catch (err) {
-    dbg('Login EXCEPTION: ' + err.message);
-    errEl.textContent = 'Something went wrong. Please try again.';
-    btn.disabled = false;
-  }
-}
-
-async function handleRegister(e) {
-  e.preventDefault();
-  dbg('handleRegister called');
-  const fullname = document.getElementById('register-fullname').value.trim();
-  const email = document.getElementById('register-email').value.trim();
-  const password = document.getElementById('register-password').value;
-  const confirm = document.getElementById('register-confirm-password').value;
-  const errEl = document.getElementById('register-error');
-  if (!fullname || !email || !password || !confirm) { errEl.textContent = 'Please fill in all fields.'; return; }
-  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
-  if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
-  const btn = document.getElementById('btn-register');
-  btn.disabled = true;
-  errEl.textContent = 'Creating account...';
-  try {
-    dbg('Calling supabase.auth.signUp...');
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: fullname } }
-    });
-    dbg('signUp returned. error=' + (error ? error.message : 'none') + ' session=' + (data?.session ? 'YES' : 'NO'));
-    if (error) { errEl.textContent = error.message; btn.disabled = false; return; }
-    if (data.user && !data.session) {
-      dbg('No session - email confirmation required!');
-      errEl.textContent = '';
-      btn.disabled = false;
-      showToast('Account created! Check your email to confirm, then log in.', 'info');
-      showAuthCard('login');
-      return;
-    }
-    dbg('Signup OK with session. Waiting for onAuthStateChange...');
-    errEl.textContent = '';
-  } catch (err) {
-    dbg('Register EXCEPTION: ' + err.message);
-    errEl.textContent = 'Something went wrong. Please try again.';
-    btn.disabled = false;
-  }
-}
-
-async function handleLogout() {
-  await supabase.auth.signOut();
-  currentUser = null;
-  showAuthScreen();
-  showToast('Logged out successfully.', 'info');
-}
-
-async function handleChangePassword() {
-  const pw = document.getElementById('settings-change-password').value;
-  const cpw = document.getElementById('settings-confirm-password').value;
-  if (!pw || !cpw) { showToast('Please fill in both password fields.', 'error'); return; }
-  if (pw.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
-  if (pw !== cpw) { showToast('Passwords do not match.', 'error'); return; }
-  const { error } = await supabase.auth.updateUser({ password: pw });
-  if (error) { showToast(error.message, 'error'); return; }
-  document.getElementById('settings-change-password').value = '';
-  document.getElementById('settings-confirm-password').value = '';
-  showToast('Password changed successfully!');
-}
-
-// Switch user — just logout and let them re-login
-function switchToUser() { closeModal('switch-user-modal'); handleLogout(); }
-function deleteUserAccount() { showToast('Account deletion is managed from settings.', 'info'); }
-function renderUserAccountsList() {
-  const list = document.getElementById('user-accounts-list');
-  if (!currentUser) return;
-  const name = currentUser.user_metadata?.full_name || 'User';
-  const initials = name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
-  list.innerHTML = `<div class="user-account-item active">
-    <div class="user-account-avatar">${initials}</div>
-    <div class="user-account-info"><div class="user-account-name">${name}</div><div class="user-account-username">${currentUser.email}</div></div>
-    <span class="user-account-current">● Current</span>
-  </div>`;
-}
-
-// ============================================
-// DATA — Supabase CRUD
+// SUPABASE DATA LAYER (no auth)
 // ============================================
 async function loadState() {
-  if (!currentUser) return;
-  const uid = currentUser.id;
   try {
     // Load transactions
-    const { data: txns } = await supabase.from('transactions').select('*').eq('user_id', uid).order('date', { ascending: false });
+    const { data: txns } = await supabase.from('transactions').select('*').order('date', { ascending: false });
     state.transactions = (txns || []).map(t => ({
       id: t.id, type: t.type, amount: parseFloat(t.amount), description: t.description,
       category: t.category, date: t.date, notes: t.notes || '', createdAt: new Date(t.created_at).getTime()
     }));
     // Load budgets
-    const { data: bdgs } = await supabase.from('budgets').select('*').eq('user_id', uid);
+    const { data: bdgs } = await supabase.from('budgets').select('*');
     state.budgets = (bdgs || []).map(b => ({ id: b.id, category: b.category, limit: parseFloat(b.budget_limit) }));
-    // Load settings (use maybeSingle to avoid error if row doesn't exist yet)
-    const { data: sett } = await supabase.from('user_settings').select('*').eq('user_id', uid).maybeSingle();
+    // Load settings
+    const { data: sett } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
     if (sett) {
       state.settings = {
-        currency: sett.currency || 'INR', dark_mode: sett.dark_mode ?? true,
-        notifications: sett.notifications ?? true, weekly_report: sett.weekly_report ?? false,
-        web3forms_key: sett.web3forms_key || '', alert_email: sett.alert_email || '',
-        budget_alerts: sett.budget_alerts ?? false
+        name: sett.name || 'User', currency: sett.currency || 'INR', darkMode: sett.dark_mode ?? true,
+        web3formsKey: sett.web3forms_key || '', alertEmail: sett.alert_email || '', budgetAlerts: sett.budget_alerts ?? false
       };
     }
-  } catch (err) {
-    console.error('loadState error:', err);
-  }
+  } catch (err) { console.warn('loadState error:', err); }
+}
+
+async function saveSettingsDB() {
+  await supabase.from('app_settings').upsert({
+    id: 1, name: state.settings.name, currency: state.settings.currency,
+    dark_mode: state.settings.darkMode, web3forms_key: state.settings.web3formsKey,
+    alert_email: state.settings.alertEmail, budget_alerts: state.settings.budgetAlerts
+  });
 }
 
 function getCurrencySymbol() { return CURRENCY_SYMBOLS[state.settings.currency] || '₹'; }
@@ -191,7 +66,7 @@ function switchSection(name) {
   document.getElementById('sidebar').classList.remove('open');
   refreshAll();
 }
-function openModal(id) { if(id==='switch-user-modal') renderUserAccountsList(); document.getElementById(id).classList.add('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 function showToast(message, type='success') {
@@ -215,10 +90,10 @@ async function handleAddTransaction(e) {
   const date = document.getElementById('txn-date').value;
   const notes = (document.getElementById('txn-notes').value || '').trim();
   if(!amount||!description||!category||!date){showToast('Please fill in all required fields.','error');return;}
-  const { data, error } = await supabase.from('transactions').insert({
-    user_id: currentUser.id, type, amount, description, category, date, notes
-  }).select().single();
-  if (error) { showToast('Failed to add transaction: ' + error.message, 'error'); return; }
+
+  const { data, error } = await supabase.from('transactions').insert({ type, amount, description, category, date, notes }).select().single();
+  if (error) { showToast('Failed to add: ' + error.message, 'error'); return; }
+
   const newTxn = { id: data.id, type, amount, description, category, date, notes, createdAt: Date.now() };
   state.transactions.unshift(newTxn);
   document.getElementById('transaction-form').reset();
@@ -230,7 +105,7 @@ async function handleAddTransaction(e) {
 }
 
 async function deleteTransaction(id) {
-  await supabase.from('transactions').delete().eq('id', id).eq('user_id', currentUser.id);
+  await supabase.from('transactions').delete().eq('id', id);
   state.transactions = state.transactions.filter(t => t.id !== id);
   showToast('Transaction deleted.', 'info');
   refreshAll();
@@ -244,15 +119,14 @@ async function handleAddBudget(e) {
   const category = document.getElementById('budget-category').value;
   const limit = parseFloat(document.getElementById('budget-limit').value);
   if(!category||!limit){showToast('Please fill in all fields.','error');return;}
+
   const existing = state.budgets.find(b => b.category === category);
   if (existing) {
     await supabase.from('budgets').update({ budget_limit: limit }).eq('id', existing.id);
     existing.limit = limit;
     showToast(`Budget for ${category} updated!`);
   } else {
-    const { data, error } = await supabase.from('budgets').insert({
-      user_id: currentUser.id, category, budget_limit: limit
-    }).select().single();
+    const { data, error } = await supabase.from('budgets').insert({ category, budget_limit: limit }).select().single();
     if (error) { showToast('Failed: ' + error.message, 'error'); return; }
     state.budgets.push({ id: data.id, category, limit });
     showToast(`Budget for ${category} created!`);
@@ -263,56 +137,41 @@ async function handleAddBudget(e) {
 }
 
 async function deleteBudget(id) {
-  await supabase.from('budgets').delete().eq('id', id).eq('user_id', currentUser.id);
+  await supabase.from('budgets').delete().eq('id', id);
   state.budgets = state.budgets.filter(b => b.id !== id);
   showToast('Budget removed.', 'info');
   refreshAll();
 }
 
 // ============================================
-// SETTINGS — Supabase
+// SETTINGS
 // ============================================
 async function saveSettings() {
-  const name = document.getElementById('settings-name').value.trim();
-  const email = document.getElementById('settings-email').value.trim();
+  state.settings.name = document.getElementById('settings-name').value.trim() || 'User';
   state.settings.currency = document.getElementById('settings-currency').value;
-  // Update profile name
-  await supabase.auth.updateUser({ data: { full_name: name } });
-  await supabase.from('profiles').update({ full_name: name }).eq('id', currentUser.id);
-  // Update settings in DB
-  await supabase.from('user_settings').update({
-    currency: state.settings.currency,
-    dark_mode: state.settings.dark_mode,
-    notifications: state.settings.notifications,
-    weekly_report: state.settings.weekly_report,
-    web3forms_key: state.settings.web3forms_key,
-    alert_email: state.settings.alert_email || email,
-    budget_alerts: state.settings.budget_alerts
-  }).eq('user_id', currentUser.id);
-  currentUser.user_metadata = { ...currentUser.user_metadata, full_name: name };
+  await saveSettingsDB();
   showToast('Settings saved!');
   updateSidebarUser();
   refreshAll();
 }
 
 function applySettings() {
-  const name = currentUser?.user_metadata?.full_name || 'User';
-  document.getElementById('settings-name').value = name;
-  document.getElementById('settings-email').value = currentUser?.email || '';
+  document.getElementById('settings-name').value = state.settings.name;
+  document.getElementById('settings-email').value = '';
   document.getElementById('settings-currency').value = state.settings.currency;
-  document.getElementById('toggle-dark-mode').checked = state.settings.dark_mode;
-  document.getElementById('toggle-notifications').checked = state.settings.notifications;
-  document.getElementById('toggle-weekly-report').checked = state.settings.weekly_report;
-  document.getElementById('settings-web3forms-key').value = state.settings.web3forms_key || '';
-  document.getElementById('settings-alert-email').value = state.settings.alert_email || '';
-  document.getElementById('toggle-budget-alerts').checked = !!state.settings.budget_alerts;
-  document.body.classList.toggle('light-mode', !state.settings.dark_mode);
+  document.getElementById('toggle-dark-mode').checked = state.settings.darkMode;
+  document.getElementById('toggle-notifications').checked = true;
+  document.getElementById('toggle-weekly-report').checked = false;
+  document.getElementById('settings-web3forms-key').value = state.settings.web3formsKey || '';
+  document.getElementById('settings-alert-email').value = state.settings.alertEmail || '';
+  document.getElementById('toggle-budget-alerts').checked = !!state.settings.budgetAlerts;
+  document.body.classList.toggle('light-mode', !state.settings.darkMode);
   updateSidebarUser();
 }
 
 function updateSidebarUser() {
-  const name = currentUser?.user_metadata?.full_name || 'User';
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+  const name = state.settings.name || 'User';
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2) || 'U';
   document.getElementById('sidebar-avatar').textContent = initials;
   document.getElementById('sidebar-user-name').textContent = name;
   const greeting = document.getElementById('dashboard-greeting');
@@ -328,8 +187,8 @@ function exportData() {
 
 async function clearAllData() {
   if(!confirm('⚠️ Delete all your data? This cannot be undone.')) return;
-  await supabase.from('transactions').delete().eq('user_id', currentUser.id);
-  await supabase.from('budgets').delete().eq('user_id', currentUser.id);
+  await supabase.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('budgets').delete().neq('id', '00000000-0000-0000-0000-000000000000');
   state.transactions = []; state.budgets = [];
   showToast('All data cleared.', 'info');
   refreshAll();
@@ -341,18 +200,18 @@ async function saveAlertSettings() {
   const enabled = document.getElementById('toggle-budget-alerts').checked;
   if (enabled && !key) { showToast('Please enter your Web3Forms access key.', 'error'); return; }
   if (enabled && !email) { showToast('Please enter an alert email address.', 'error'); return; }
-  state.settings.web3forms_key = key;
-  state.settings.alert_email = email;
-  state.settings.budget_alerts = enabled;
-  await supabase.from('user_settings').update({ web3forms_key: key, alert_email: email, budget_alerts: enabled }).eq('user_id', currentUser.id);
+  state.settings.web3formsKey = key;
+  state.settings.alertEmail = email;
+  state.settings.budgetAlerts = enabled;
+  await saveSettingsDB();
   showToast(enabled ? '📧 Budget email alerts enabled!' : 'Email alerts saved (currently disabled).');
 }
 
-async function toggleSettingDB(field, value) {
-  state.settings[field] = value;
-  const update = {}; update[field] = value;
-  await supabase.from('user_settings').update(update).eq('user_id', currentUser.id);
-}
+function handleChangePassword() { showToast('No login required — app works directly!', 'info'); }
+function switchToUser() { closeModal('switch-user-modal'); }
+function handleLogin(e) { e.preventDefault(); }
+function handleRegister(e) { e.preventDefault(); }
+function handleLogout() {}
 
 // ============================================
 // COMPUTATIONS
@@ -518,7 +377,7 @@ function renderSavingsRate() {
 // WEB3FORMS — BUDGET ALERT EMAIL
 // ============================================
 function checkBudgetLimitsAndAlert(category, newTxn) {
-  if (!state.settings.budget_alerts || !state.settings.web3forms_key || !state.settings.alert_email) return;
+  if (!state.settings.budgetAlerts || !state.settings.web3formsKey || !state.settings.alertEmail) return;
   const budget = state.budgets.find(b => b.category === category);
   if (!budget) return;
   const catData = computeCategoryExpenses().find(c => c.category === category);
@@ -531,20 +390,18 @@ function checkBudgetLimitsAndAlert(category, newTxn) {
 }
 
 async function sendBudgetAlertEmail(category, limit, spent, overBy, pct, txn) {
-  const emoji = CATEGORY_EMOJIS[category] || '📦';
-  const userName = currentUser?.user_metadata?.full_name || 'User';
   const sym = getCurrencySymbol();
   const f = (v) => sym + v.toLocaleString('en-IN', {minimumFractionDigits:2});
-  const msg = `⚠️ BUDGET LIMIT EXCEEDED\n\nHello ${userName},\nYour "${category}" spending exceeded the budget!\n\n${emoji} Category: ${category}\n💰 Limit: ${f(limit)}\n🔴 Spent: ${f(spent)}\n📈 Over by: ${f(overBy)} (${pct}%)\n\n💳 Latest: ${txn.description} — ${f(txn.amount)} on ${formatDate(txn.date)}\n\n— FinFlow`;
+  const msg = `⚠️ BUDGET LIMIT EXCEEDED\n\nYour "${category}" spending exceeded the budget!\n\n${CATEGORY_EMOJIS[category]||'📦'} Category: ${category}\n💰 Limit: ${f(limit)}\n🔴 Spent: ${f(spent)}\n📈 Over by: ${f(overBy)} (${pct}%)\n\n💳 Latest: ${txn.description} — ${f(txn.amount)} on ${formatDate(txn.date)}\n\n— FinFlow`;
   try {
     const res = await fetch('https://api.web3forms.com/submit', {
       method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body: JSON.stringify({ access_key:state.settings.web3forms_key, subject:`⚠️ Budget Alert: ${category} exceeded! (${pct}%)`, from_name:'FinFlow Budget Alert', to:state.settings.alert_email, message:msg, replyto:state.settings.alert_email })
+      body: JSON.stringify({ access_key:state.settings.web3formsKey, subject:`⚠️ Budget Alert: ${category} exceeded! (${pct}%)`, from_name:'FinFlow', to:state.settings.alertEmail, message:msg })
     });
     const r = await res.json();
-    if(r.success) showToast(`📧 Budget alert sent for ${category}!`,'info');
+    if(r.success) showToast(`📧 Alert sent for ${category}!`,'info');
     else showToast(`Alert failed: ${r.message}`,'error');
-  } catch(err) { showToast('Failed to send alert email.','error'); }
+  } catch(err) { showToast('Failed to send alert.','error'); }
 }
 
 async function sendTestAlert() {
@@ -554,9 +411,9 @@ async function sendTestAlert() {
   if(!email){showToast('Enter alert email first.','error');return;}
   showToast('Sending test…','info');
   try {
-    const res=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({access_key:key,subject:'✅ FinFlow Test Alert — Working!',from_name:'FinFlow',to:email,message:`Hello! Your FinFlow email alerts are working.\n\n— FinFlow`,replyto:email})});
+    const res=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({access_key:key,subject:'✅ FinFlow Test Alert — Working!',from_name:'FinFlow',to:email,message:'Hello! Your FinFlow email alerts are working.\n\n— FinFlow'})});
     const r=await res.json();
-    if(r.success) showToast('✅ Test email sent! Check inbox.','success');
+    if(r.success) showToast('✅ Test email sent!','success');
     else showToast(`Failed: ${r.message}`,'error');
   } catch(err) { showToast('Failed to send.','error'); }
 }
@@ -571,26 +428,20 @@ function refreshAll() {
 }
 
 // ============================================
-// START APP (after login)
-// ============================================
-async function startApp() {
-  dbg('startApp() called');
-  showApp();
-  dbg('showApp done. Loading state...');
-  await loadState();
-  dbg('loadState done. Applying settings...');
-  applySettings();
-  dbg('applySettings done. Setting date...');
-  document.getElementById('txn-date').value = new Date().toISOString().split('T')[0];
-  dbg('Calling refreshAll...');
-  refreshAll();
-  dbg('startApp COMPLETE ✅');
-}
-
-// ============================================
-// INIT
+// INIT — App opens directly, no login
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
+  // Hide auth screen, show app directly
+  const authScreen = document.getElementById('auth-screen');
+  const appWrapper = document.getElementById('app-wrapper');
+  if (authScreen) authScreen.classList.add('hidden');
+  if (appWrapper) appWrapper.classList.remove('hidden');
+
+  // Load data from Supabase
+  await loadState();
+  applySettings();
+  document.getElementById('txn-date').value = new Date().toISOString().split('T')[0];
+
   // Nav clicks
   document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => switchSection(btn.dataset.section)));
   // Mobile menu
@@ -607,50 +458,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   ['filter-type','filter-category','filter-sort'].forEach(id => document.getElementById(id).addEventListener('change', renderAllTransactions));
   document.getElementById('filter-search').addEventListener('input', renderAllTransactions);
   // Settings toggles
-  document.getElementById('toggle-dark-mode').addEventListener('change', e => { state.settings.dark_mode=e.target.checked; toggleSettingDB('dark_mode',e.target.checked); applySettings(); });
-  document.getElementById('toggle-notifications').addEventListener('change', e => { toggleSettingDB('notifications',e.target.checked); });
-  document.getElementById('toggle-weekly-report').addEventListener('change', e => { toggleSettingDB('weekly_report',e.target.checked); });
-  document.getElementById('toggle-budget-alerts').addEventListener('change', e => { state.settings.budget_alerts=e.target.checked; });
+  document.getElementById('toggle-dark-mode').addEventListener('change', e => { state.settings.darkMode=e.target.checked; saveSettingsDB(); applySettings(); });
+  document.getElementById('toggle-notifications').addEventListener('change', () => {});
+  document.getElementById('toggle-weekly-report').addEventListener('change', () => {});
+  document.getElementById('toggle-budget-alerts').addEventListener('change', e => { state.settings.budgetAlerts=e.target.checked; });
   // Resize
   let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{drawSpendingChart();drawCategoryChart();drawMonthlyTrendChart();drawIncomeExpenseChart();},200);});
 
-  // Supabase auth — single source of truth
-  let appStarted = false;
-
-  async function handleAuthChange(event, session) {
-    dbg('handleAuthChange: event=' + event + ' user=' + (session?.user?.email || 'none'));
-    if (session && session.user) {
-      currentUser = session.user;
-      if (!appStarted) {
-        appStarted = true;
-        dbg('First auth, calling startApp...');
-        try {
-          await startApp();
-          dbg('startApp completed successfully');
-        } catch (err) {
-          dbg('startApp CRASHED: ' + err.message + '\n' + err.stack);
-          showToast('Error loading app data.', 'error');
-        }
-      } else {
-        dbg('App already started, skipping');
-      }
-    } else {
-      dbg('No session, showing auth screen');
-      currentUser = null;
-      appStarted = false;
-      showAuthScreen();
-      showAuthCard('login');
-    }
-  }
-
-  supabase.auth.onAuthStateChange(handleAuthChange);
-
-  // Check existing session on load
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session && session.user) {
-    await handleAuthChange('INITIAL_SESSION', session);
-  } else {
-    showAuthScreen();
-    showAuthCard('login');
-  }
+  // Render everything
+  refreshAll();
 });
