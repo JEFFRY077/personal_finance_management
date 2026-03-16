@@ -35,12 +35,17 @@ async function handleLogin(e) {
   const errEl = document.getElementById('login-error');
   if (!email || !password) { errEl.textContent = 'Please fill in all fields.'; return; }
   errEl.textContent = 'Signing in...';
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) { errEl.textContent = error.message; return; }
-  document.getElementById('login-form').reset();
-  errEl.textContent = '';
-  currentUser = data.user;
-  await startApp();
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { errEl.textContent = error.message; return; }
+    document.getElementById('login-form').reset();
+    errEl.textContent = '';
+    currentUser = data.user;
+    await startApp();
+  } catch (err) {
+    console.error('Login error:', err);
+    errEl.textContent = 'Something went wrong. Please try again.';
+  }
 }
 
 async function handleRegister(e) {
@@ -54,22 +59,27 @@ async function handleRegister(e) {
   if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
   if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
   errEl.textContent = 'Creating account...';
-  const { data, error } = await supabase.auth.signUp({
-    email, password,
-    options: { data: { full_name: fullname } }
-  });
-  if (error) { errEl.textContent = error.message; return; }
-  if (data.user && !data.session) {
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: { data: { full_name: fullname } }
+    });
+    if (error) { errEl.textContent = error.message; return; }
+    if (data.user && !data.session) {
+      errEl.textContent = '';
+      showToast('Account created! Please check your email to confirm, then log in.', 'info');
+      showAuthCard('login');
+      return;
+    }
+    document.getElementById('register-form').reset();
     errEl.textContent = '';
-    showToast('Account created! Please check your email to confirm, then log in.', 'info');
-    showAuthCard('login');
-    return;
+    currentUser = data.user;
+    showToast('Account created! Welcome to FinFlow! 🎉');
+    await startApp();
+  } catch (err) {
+    console.error('Register error:', err);
+    errEl.textContent = 'Something went wrong. Please try again.';
   }
-  document.getElementById('register-form').reset();
-  errEl.textContent = '';
-  currentUser = data.user;
-  showToast('Account created! Welcome to FinFlow! 🎉');
-  await startApp();
 }
 
 async function handleLogout() {
@@ -569,14 +579,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{drawSpendingChart();drawCategoryChart();drawMonthlyTrendChart();drawIncomeExpenseChart();},200);});
 
   // Supabase auth state listener
+  let appStarted = false;
   supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('Auth event:', event, session?.user?.email);
     if (session?.user) {
       currentUser = session.user;
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Only auto-start on initial load, not every token refresh
+      if (event === 'SIGNED_IN' && !appStarted) {
+        appStarted = true;
+        await startApp();
       }
     } else {
       currentUser = null;
+      appStarted = false;
       showAuthScreen();
     }
   });
