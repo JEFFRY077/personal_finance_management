@@ -125,24 +125,28 @@ function renderUserAccountsList() {
 async function loadState() {
   if (!currentUser) return;
   const uid = currentUser.id;
-  // Load transactions
-  const { data: txns } = await supabase.from('transactions').select('*').eq('user_id', uid).order('date', { ascending: false });
-  state.transactions = (txns || []).map(t => ({
-    id: t.id, type: t.type, amount: parseFloat(t.amount), description: t.description,
-    category: t.category, date: t.date, notes: t.notes || '', createdAt: new Date(t.created_at).getTime()
-  }));
-  // Load budgets
-  const { data: bdgs } = await supabase.from('budgets').select('*').eq('user_id', uid);
-  state.budgets = (bdgs || []).map(b => ({ id: b.id, category: b.category, limit: parseFloat(b.budget_limit) }));
-  // Load settings
-  const { data: sett } = await supabase.from('user_settings').select('*').eq('user_id', uid).single();
-  if (sett) {
-    state.settings = {
-      currency: sett.currency || 'INR', dark_mode: sett.dark_mode ?? true,
-      notifications: sett.notifications ?? true, weekly_report: sett.weekly_report ?? false,
-      web3forms_key: sett.web3forms_key || '', alert_email: sett.alert_email || '',
-      budget_alerts: sett.budget_alerts ?? false
-    };
+  try {
+    // Load transactions
+    const { data: txns } = await supabase.from('transactions').select('*').eq('user_id', uid).order('date', { ascending: false });
+    state.transactions = (txns || []).map(t => ({
+      id: t.id, type: t.type, amount: parseFloat(t.amount), description: t.description,
+      category: t.category, date: t.date, notes: t.notes || '', createdAt: new Date(t.created_at).getTime()
+    }));
+    // Load budgets
+    const { data: bdgs } = await supabase.from('budgets').select('*').eq('user_id', uid);
+    state.budgets = (bdgs || []).map(b => ({ id: b.id, category: b.category, limit: parseFloat(b.budget_limit) }));
+    // Load settings (use maybeSingle to avoid error if row doesn't exist yet)
+    const { data: sett } = await supabase.from('user_settings').select('*').eq('user_id', uid).maybeSingle();
+    if (sett) {
+      state.settings = {
+        currency: sett.currency || 'INR', dark_mode: sett.dark_mode ?? true,
+        notifications: sett.notifications ?? true, weekly_report: sett.weekly_report ?? false,
+        web3forms_key: sett.web3forms_key || '', alert_email: sett.alert_email || '',
+        budget_alerts: sett.budget_alerts ?? false
+      };
+    }
+  } catch (err) {
+    console.error('loadState error:', err);
   }
 }
 
